@@ -8,8 +8,8 @@ from matplotlib import pyplot as plt
 work_folder = 'C:\\Users\\Andrei\\Desktop\\for_Linhao'
 reference = '4932-WHOLE_ORGANISM-integrated.txt'
 experiment = 'HS_6.txt'
-experiments = ['HS_6', 'HS_15', 'H2O2_40', 'H2O2_70']
-header_selection = ['0N-++--', '00N++---', '0N++--', '0N++--' ]
+experiments = ['HS_6', 'HS_30', 'H2O2_40', 'H2O2_70']
+header_selection = ['0N-++--', '00N++----', '0N++--', '0N++--' ]
 
 experiments_path = [os.path.join(work_folder, exp + '.txt') for exp in experiments]
 
@@ -48,6 +48,8 @@ with open(reference, 'r') as ref_f:
     ref_list = [line for line in ref_iter]
     ref_names = np.array([line[1].split('.')[1] for line in ref_list]).astype(np.str)
     ref_names = ref_names.flatten()
+    ref_alt_names = np.empty_like(ref_names)
+    ref_alt_names.fill(np.nan)
     ref_values = np.array([[float(line[2]), 0] for line in ref_list]).astype(np.float64)
     sorted_ref_values = ref_values[np.argsort(ref_names), 0][:, np.newaxis]
 
@@ -85,8 +87,22 @@ def read_experiment(experiment_file, header_selection):
         exp_list = [line for line in exp_iter]
         exp_names = np.array([line[name_idx].split('\.') for line in exp_list]).astype(np.str)
         exp_names = exp_names.flatten()
-        exp_values_pos = np.nanmean(np.array([vector_interpolation(lgi(line, positive)) for line in exp_list ]).astype(np.float64), axis=1)
-        exp_values_neg = np.nanmean(np.array([vector_interpolation(lgi(line, negative)) for line in exp_list ]).astype(np.float64), axis=1)
+        exp_pos_comps = np.array([vector_interpolation(lgi(line, positive)) for line in exp_list ]).astype(np.float64)
+        exp_values_pos = np.nanmean(exp_pos_comps, axis=1)
+        exp_pos_comp1 = exp_pos_comps[:, 0]
+        exp_pos_comp2 = exp_pos_comps[:, 1]
+        exp_neg_comps = np.array([vector_interpolation(lgi(_line, negative)) for _line in exp_list ]).astype(np.float64)
+        control_positive = np.logical_and(np.logical_not(np.isnan(exp_neg_comps)), exp_neg_comps != 0).astype(np.int8)
+        exp_neg_once = np.logical_and(np.sum(control_positive, axis=1) > 0, np.sum(control_positive, axis=1) < 2)
+        exp_neg_twiceplus = np.sum(control_positive, axis=1) > 1
+        exp_values_neg = np.nanmean(exp_neg_comps, axis=1)
+
+    # plt.title(experiment_file.split('\\')[-1].split('.')[0])
+    # plt.loglog(exp_pos_comp1, exp_pos_comp2, 'ko', label = 'no negative')
+    # plt.loglog(exp_pos_comp1[exp_neg_once], exp_pos_comp2[exp_neg_once], 'bo', label = 'negative once')
+    # plt.loglog(exp_pos_comp1[exp_neg_twiceplus], exp_pos_comp2[exp_neg_twiceplus], 'go', label = 'negative_more_than_once')
+    # plt.legend()
+    # plt.show()
 
     set_to_add = np.array(list(set(ref_names.tolist()) - set(exp_names.tolist())))
     post_exp_names = np.hstack((exp_names, set_to_add))
@@ -128,21 +144,36 @@ active_2 = active[active_indexes, :]
 negative_names = super_table[negative_indexes, 0]
 negative_control_2 = negative_control[negative_indexes, :]
 
-print active_2.shape, negative_control_2.shape
 
-new_active_index = np.logical_and(active_indexes, np.logical_not(np.any(np.isnan(active), axis=1)))
+new_active_index = np.logical_and(active_indexes, np.logical_not(np.any(np.isnan(active[:, 0:2]), axis=1)))
+new_active_index = np.logical_and(new_active_index, sorted_ref_values[:, 0]>5)
+new_active_index = np.logical_and(new_active_index, active[:, 1]>5e-4)
+
+print new_active_index, new_active_index.shape
 
 # for i, exp_name in enumerate(experiments):
 #     plt.loglog(sorted_ref_values[active_indexes], active_2[:, i], 'o', label=exp_name)
 
 # plt.loglog(sorted_ref_values[new_active_index], np.nanmean(active[new_active_index, 1:2], axis=1), 'ko', label="common to HS")
-show_with_labels(np.log(sorted_ref_values[new_active_index]),
-                 np.log(np.nanmean(active[new_active_index, :], axis=1)),
+show_with_labels(np.log10(sorted_ref_values[new_active_index]),
+                 np.log10(np.nanmean(active[new_active_index], axis=1)),
                  ref_names[new_active_index])
-# TODO: TRANSLATE into GENE names
+
+plt.xlabel('log10 of reference ppm')
+plt.ylabel('log10 of experiment ppm')
 plt.legend()
 plt.show()
 
-# TODO : pull all experiments into a single table
+
+show_with_labels(np.log10(active[new_active_index, 0]),
+                 np.log10(active[new_active_index, 1]),
+                 ref_names[new_active_index])
+
+plt.xlabel('log10 of reference ppm')
+plt.ylabel('log10 of experiment ppm')
+plt.legend()
+plt.show()
+
+# TODO: TRANSLATE into GENE names
 # TODO : do a DBScan to get outliers.
-# TODO : suppress results that are mos likely due to noise => correlation plot no label v.s. label
+
