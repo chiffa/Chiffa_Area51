@@ -147,7 +147,7 @@ negative_control_2 = negative_control[negative_indexes, :]
 
 new_active_index = np.logical_and(active_indexes, np.logical_not(np.any(np.isnan(active[:, 0:2]), axis=1)))
 new_active_index = np.logical_and(new_active_index, sorted_ref_values[:, 0]>5)
-new_active_index = np.logical_and(new_active_index, active[:, 1]>5e-4)
+# new_active_index = np.logical_and(new_active_index, active[:, 1]>5e-4)
 
 print new_active_index, new_active_index.shape
 

@@ -21,7 +21,7 @@ with open(input, 'r') as ref_f:
     ref_values = np.array([line[3] for line in ref_list]).astype(np.str)
 
 Chr_X = ref_names[ref_values == 'X']
-Chr_X = ref_names[ref_names != '']
+Chr_X = Chr_X[Chr_X != '']
 
 with open(output, 'w') as out_f:
     out_writer = writer(out_f, delimiter = '\t', lineterminator = '\n')
